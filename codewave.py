@@ -2,7 +2,7 @@
 # param_color
 SKIP_LST                =   []
 SCALE                   =   1
-SIG_MANNER              =   ['bin','sig']
+SIG_MANNER              =   ['bin','sig','clk']
 SIG_GREEN               =   "#229933"
 WAVE_HEIGHT             =   100
 WAVE_ORIGIN_STARTX      =   200
@@ -11,6 +11,7 @@ ORIGIN_POINT            =   (WAVE_ORIGIN_STARTX,WAVE_ORIGIN_STARTY)
 END_TIME                =   0
 SKIP_LEN                =   20
 WAVE_LST                =   []
+DIGIT_OPEN              =   True
 
 #[解析层MAIN]：读取文件存入列表
 def get_lines():
@@ -23,7 +24,7 @@ def get_lines():
 
 #[解析层MAIN]：获取参数
 def get_args(lines):
-    global END_TIME,SCALE,SKIP_LST
+    global END_TIME,SCALE,SKIP_LST,DIGIT_OPEN
     for line in lines:
         element_lst = line.split()
         #找出ENDTIME
@@ -36,6 +37,9 @@ def get_args(lines):
             #找出SKIP
             elif(element_lst[0] == '@skip'  ):
                 SKIP_LST.append([eval(element_lst[1]),eval(element_lst[-1])])
+            #找出DIGIT
+            elif(element_lst[0] == '@digit' ):
+                DIGIT_OPEN = eval(element_lst[1])
 
 #[解析层MAIN]：获取波形初始点
 def get_wave(lines):
@@ -48,12 +52,15 @@ def get_wave(lines):
     for line in lines:
         element_lst = line.split()
         if(Flag_in_sig == True):
-            if(len(element_lst)!=2):#退出
+            if(len(element_lst)<2):#退出
                 #插入点处理，目前的坐标还是时间坐标，value也还是1和0
                 if(WAVE_DICT['sig_manner']=='bin'):
-                    WAVE_DICT['point_lst_insert']=sigline_to_pointslst(WAVE_DICT['point_lst'],True)
+                    WAVE_DICT['point_lst_insert']=sigline_to_pointslst(WAVE_DICT['point_lst'],1)
+                elif(WAVE_DICT['sig_manner']=='clk'):
+                    WAVE_DICT['point_lst_insert']=sigline_to_pointslst(WAVE_DICT['point_lst'],2)
                 else:
-                    WAVE_DICT['point_lst_insert']=sigline_to_pointslst(WAVE_DICT['point_lst'],False)
+                    #print(element_lst)
+                    WAVE_DICT['point_lst_insert']=sigline_to_pointslst(WAVE_DICT['point_lst'],3)
                     #print(WAVE_DICT['point_lst_insert'])
                 WAVE_LST.append(WAVE_DICT.copy()) 
                 #后处理
@@ -63,8 +70,25 @@ def get_wave(lines):
             else:#中间
                 if(WAVE_DICT['sig_manner']=='bin'):
                     WAVE_DICT['point_lst'].append([eval(element_lst[0]),eval(element_lst[1])])
-                else:
+                elif(WAVE_DICT['sig_manner']=='sig'):
                     WAVE_DICT['point_lst'].append([eval(element_lst[0]),element_lst[1]])
+                elif(WAVE_DICT['sig_manner']=='clk'):
+                    T=eval(element_lst[0][2:])
+                    rate=eval(element_lst[1][5:])
+                    offset=eval(element_lst[2][7:])
+                    pos_point_x = offset
+                    WAVE_DICT['point_lst'].append([0,0])
+                    while(pos_point_x<END_TIME):
+                        WAVE_DICT['point_lst'].append([pos_point_x,1])
+                        neg_point_x= pos_point_x + T*rate
+                        if(neg_point_x>=END_TIME):
+                            break
+                        else:
+                            WAVE_DICT['point_lst'].append([neg_point_x,0])
+                        pos_point_x = neg_point_x + T*(1-rate)
+                    #print(WAVE_DICT['point_lst'])
+                else:
+                    pass
                 
         if(len(element_lst) == 4):
             if(element_lst[1] in SIG_MANNER):#进入
@@ -88,13 +112,19 @@ def cal_skip_insert():
                 for section in SKIP_LST:
                     skip_start = section[0]
                     skip_end   = section[1]
-                    if(skip_start>=WAVE_DICT['point_lst_insert'][point_index][0] and skip_end<=WAVE_DICT['point_lst_insert'][point_index+1][0]):
+                    if(skip_start>=WAVE_DICT['point_lst_insert'][point_index][0] and skip_start<=WAVE_DICT['point_lst_insert'][point_index+1][0]):
                         point_lst_real_coord.append([section[0],2])#section start
                         point_lst_real_coord.append([section[1],2.5])#section end
-
                 point_lst_real_coord.append(WAVE_DICT['point_lst_insert'][point_index+1])#point
-        
-            WAVE_DICT['point_lst_insert_skip'] = point_lst_real_coord
+
+            #保证skip中的点不显示
+            point_lst_real_coord_m =[]
+            MAX=0
+            for point in point_lst_real_coord:
+                if(point[0]>=MAX):
+                    point_lst_real_coord_m.append(point)
+                    MAX = point[0]
+            WAVE_DICT['point_lst_insert_skip'] = point_lst_real_coord_m
         else:
             WAVE_DICT['point_lst_insert_skip'] = WAVE_DICT['point_lst_insert']
         
@@ -141,7 +171,7 @@ def cal_real_coord_x_scale_skipadjust():
 def cal_real_coord_y():
     global WAVE_LST
     for WAVE_DICT in WAVE_LST:
-        if(WAVE_DICT['sig_manner']=='bin'):
+        if(WAVE_DICT['sig_manner']=='bin' or WAVE_DICT['sig_manner']=='clk'):
             real_draw_coord = []
             y_base_value    = WAVE_ORIGIN_STARTY + WAVE_HEIGHT * (1+WAVE_DICT['sig_index'])
             point_adjust = 0
@@ -224,7 +254,7 @@ def cal_real_mesh():
 def cal_real_mesh_draw():
     global WAVE_LST
     for WAVE_DICT in WAVE_LST:
-        if(WAVE_DICT['sig_manner']=='bin'):
+        if(WAVE_DICT['sig_manner']=='bin' or WAVE_DICT['sig_manner']=='clk'):
             dash_end_y   = WAVE_DICT['real_axis_x'][0][-1]
             dash_start_y = dash_end_y -30
             for x in WAVE_DICT['real_mesh_lst_x']:
@@ -256,7 +286,7 @@ def cal_real_mesh_draw():
 def cal_real_coord_draw():
     global WAVE_LST
     for WAVE_DICT in WAVE_LST:
-        if(WAVE_DICT['sig_manner']=='bin'):
+        if(WAVE_DICT['sig_manner']=='bin' or WAVE_DICT['sig_manner']=='clk'):
             for i in range(len(WAVE_DICT['real_draw_coord'])-1):
                 start_point = WAVE_DICT['real_draw_coord'][i]
                 end_point   = WAVE_DICT['real_draw_coord'][i+1]
@@ -307,10 +337,13 @@ def cal_real_coord_draw_aixs_x():
 def cal_time_note_draw():
     # <text x="0" y="5" fill="red">这是一段文本</text>
     global WAVE_LST
-    for WAVE_DICT in WAVE_LST:
-        for time_str,point in WAVE_DICT['time_note_dict'].items():
-            print('<text x="{}" y="{}" fill="#000000" font-size="{}" text-anchor="middle" dominant-baseline="central" transform="rotate(60,{},{})">{}</text>'.format(point[0],point[1],6,point[0],point[1],time_str))
-
+    if(DIGIT_OPEN == True):
+        for WAVE_DICT in WAVE_LST:
+            for time_str,point in WAVE_DICT['time_note_dict'].items():
+                print('<text x="{}" y="{}" fill="#000000" font-size="{}" text-anchor="middle" dominant-baseline="central" transform="rotate(60,{},{})">{}</text>'.format(point[0],point[1],6,point[0],point[1],time_str))
+    else:
+        pass
+    
 #[绘图层MAIN step5]:绘制sig tag，基于real_draw_coord
 def sig_tag_draw():
     global WAVE_LST
@@ -326,7 +359,7 @@ def sig_tag_draw():
                     tag_inf     = [(start_point[0]+end_point[0])/2,y_value_middle,start_point[1]]
                     print('<text x="{}" y="{}" fill="#000000" font-size="{}" text-anchor="middle" dominant-baseline="central" transform="rotate(0,{},{})" font-weight="bold"  font-family="Consolas, monospace">{}</text>'.format(tag_inf[0],tag_inf[1],8,tag_inf[0],tag_inf[1],tag_inf[2]))
                 elif(start_point[1]!=2 and start_point[1]!=2.5):
-                    tag_inf     = [start_point[0]+20,y_value_middle,start_point[1]]
+                    tag_inf     = [start_point[0]+10+SKIP_LEN,y_value_middle,start_point[1]]
                     print('<text x="{}" y="{}" fill="#000000" font-size="{}" text-anchor="middle" dominant-baseline="central" transform="rotate(0,{},{})" font-weight="bold"  font-family="Consolas, monospace">{}</text>'.format(tag_inf[0],tag_inf[1],8,tag_inf[0],tag_inf[1],tag_inf[2]))
 
 
@@ -344,12 +377,13 @@ def sig_title_draw():
 
 
 #[MISC]：初始波形点插值、相对时间变成绝对时间
-def sigline_to_pointslst(sig_lines,insert_flag=True):#
+def sigline_to_pointslst(sig_lines,insert_flag=1):#
     #时间累加
-    for i in range(len(sig_lines)):
-        if(i!=0):
-            sig_lines[i][0] += sig_lines[i-1][0]
-    if(insert_flag == True):
+    if(insert_flag !=2):
+        for i in range(len(sig_lines)):
+            if(i!=0):
+                sig_lines[i][0] += sig_lines[i-1][0]
+    if(insert_flag == 1 or insert_flag == 2):
         inserted_sig_lines=list(range(2*len(sig_lines)))
         for i in range(len(sig_lines)):
             inserted_sig_lines[2*i] = sig_lines[i]
@@ -358,6 +392,7 @@ def sigline_to_pointslst(sig_lines,insert_flag=True):#
         inserted_sig_lines[-1] = [END_TIME,inserted_sig_lines[-2][1]]
         return inserted_sig_lines
     else:
+        #print(sig_lines)
         return sig_lines+[[END_TIME,sig_lines[-1][1]]]
 
 #获取第i个波形的坐标原点，i从0开始
@@ -445,7 +480,7 @@ def svg_draw_meshline(start_point,end_point,color,line_width):
     elif(y1==y2):
         MODE = "H"
     else:
-        print("ERROR in svg_draw_meshline")
+        print("ERROR in svg_draw_meshline{},{}".format(start_point,end_point))
         return
         
     if(MODE == "V"):
@@ -647,7 +682,7 @@ sig_title_draw()
 
 for wavedict in WAVE_LST:
     for elem in wavedict.items():
-        print(elem)
+        #print(elem)
         pass
 # point_lst = [(200,280),(300,280),(300,220),(400,220),(400,280),(500,280)]
 # svg_draw_meshline_successive(point_lst,SIG_GREEN,4)
