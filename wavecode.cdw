@@ -2,7 +2,7 @@
 @skip   100 to 150
 @skip   210 to 400
 @end    500
-@scale  2
+@scale  2.5
 
 @a      bin     #229933     3
 +0      0
@@ -17,8 +17,8 @@
 
 @c      sig     #ff00ff     2
 +0      MODE1
-+10     MODE2
-+40     MODE3
-+10     MODE4
++90     MODE2
++80     MODE3
++240    MODE4
 
 

@@ -224,18 +224,34 @@ def cal_real_mesh():
 def cal_real_mesh_draw():
     global WAVE_LST
     for WAVE_DICT in WAVE_LST:
-        dash_end_y   = WAVE_DICT['real_axis_x'][0][-1]
-        dash_start_y = dash_end_y -30
-        for x in WAVE_DICT['real_mesh_lst_x']:
-            if(x!=WAVE_DICT['real_mesh_lst_x'][0] and x!=WAVE_DICT['real_mesh_lst_x'][-1]):
-                dash_start_y_modify = dash_start_y
-            elif(x==WAVE_DICT['real_mesh_lst_x'][0]):
-                dash_start_y_modify =WAVE_DICT['real_draw_coord'][0][1]
-            else:
-                dash_start_y_modify =WAVE_DICT['real_draw_coord'][-1][-1]
-            print('<line x1="{}" y1="{}" x2="{}" y2="{}"  stroke="lightgrey" stroke-width="1" stroke-dasharray="10,5" /> <!-- dot mesh -->'.format(x,dash_start_y_modify,x,dash_end_y))
-    #<line x1="201" y1="200" x2="201" y2="300"  stroke="lightgrey" stroke-width="2" stroke-dasharray="10,5" /> <!-- dot mesh -->
-  
+        if(WAVE_DICT['sig_manner']=='bin'):
+            dash_end_y   = WAVE_DICT['real_axis_x'][0][-1]
+            dash_start_y = dash_end_y -30
+            for x in WAVE_DICT['real_mesh_lst_x']:
+                if(x!=WAVE_DICT['real_mesh_lst_x'][0] and x!=WAVE_DICT['real_mesh_lst_x'][-1]):
+                    dash_start_y_modify = dash_start_y
+                elif(x==WAVE_DICT['real_mesh_lst_x'][0]):
+                    dash_start_y_modify =WAVE_DICT['real_draw_coord'][0][1]
+                else:
+                    dash_start_y_modify =WAVE_DICT['real_draw_coord'][-1][-1]
+                print('<line x1="{}" y1="{}" x2="{}" y2="{}"  stroke="lightgrey" stroke-width="1" stroke-dasharray="10,5" /> <!-- dot mesh -->'.format(x,dash_start_y_modify,x,dash_end_y))
+        #<line x1="201" y1="200" x2="201" y2="300"  stroke="lightgrey" stroke-width="2" stroke-dasharray="10,5" /> <!-- dot mesh -->
+        else:#!!!
+            y_value_base= WAVE_ORIGIN_STARTY + WAVE_HEIGHT * (1+WAVE_DICT['sig_index'])
+            y_value_up  = y_value_base -70
+            y_value_down= y_value_base -30
+            y_value_middle=y_value_base -50
+            dash_end_y    = y_value_base
+            dash_start_y  = y_value_middle
+            for x in WAVE_DICT['real_mesh_lst_x']:
+                if(x!=WAVE_DICT['real_mesh_lst_x'][0] and x!=WAVE_DICT['real_mesh_lst_x'][-1]):
+                    dash_start_y_modify = dash_start_y
+                elif(x==WAVE_DICT['real_mesh_lst_x'][0]):
+                    dash_start_y_modify = dash_start_y
+                else:
+                    dash_start_y_modify = dash_start_y
+                print('<line x1="{}" y1="{}" x2="{}" y2="{}"  stroke="lightgrey" stroke-width="1" stroke-dasharray="10,5" /> <!-- dot mesh -->'.format(x,dash_start_y_modify,x,dash_end_y))            
+
 #[绘图层MAIN step2]:在real_draw_coord基础上绘制wave
 def cal_real_coord_draw():
     global WAVE_LST
@@ -266,14 +282,12 @@ def cal_real_coord_draw():
                 else:
                     Flag_last = False
                 if(start_point[1]==2.5):#/===
-                    svg_draw_line([start_point[0]+6,y_value_up],[start_point[0]-6,y_value_down],WAVE_DICT['sig_color'],WAVE_DICT['sig_linewidth'],True)
+                    svg_draw_line([start_point[0]+6,y_value_up],[start_point[0]-6,y_value_down],'lightgrey',WAVE_DICT['sig_linewidth'],True)
                     svg_draw_sig(sig_start_point,sig_end_point,False,Flag_last,WAVE_DICT['sig_color'],WAVE_DICT['sig_linewidth'])
                 elif(start_point[1]==2):#/
-                    svg_draw_line([start_point[0]+6,y_value_up],[start_point[0]-6,y_value_down],WAVE_DICT['sig_color'],WAVE_DICT['sig_linewidth'],True)
+                    svg_draw_line([start_point[0]+6,y_value_up],[start_point[0]-6,y_value_down],'lightgrey',WAVE_DICT['sig_linewidth'],True)
                 else:#><==
                     svg_draw_sig(sig_start_point,sig_end_point,True,Flag_last,WAVE_DICT['sig_color'],WAVE_DICT['sig_linewidth'])
-
-
 
 #[绘图层MAIN step3]:在real_axis_x基础上绘制x轴
 def cal_real_coord_draw_aixs_x():
@@ -297,7 +311,38 @@ def cal_time_note_draw():
         for time_str,point in WAVE_DICT['time_note_dict'].items():
             print('<text x="{}" y="{}" fill="#000000" font-size="{}" text-anchor="middle" dominant-baseline="central" transform="rotate(60,{},{})">{}</text>'.format(point[0],point[1],6,point[0],point[1],time_str))
 
-          
+#[绘图层MAIN step5]:绘制sig tag，基于real_draw_coord
+def sig_tag_draw():
+    global WAVE_LST
+    for WAVE_DICT in WAVE_LST:  
+        if(WAVE_DICT['sig_manner']=='sig'):
+            y_base_value    = WAVE_ORIGIN_STARTY + WAVE_HEIGHT * (1+WAVE_DICT['sig_index'])
+            y_value_middle  = y_base_value -50
+            real_draw_coord=WAVE_DICT['real_draw_coord']
+            for i in range(len(real_draw_coord)-1):
+                start_point = real_draw_coord[i]
+                end_point   = real_draw_coord[i+1]
+                if(start_point[1]!=2 and start_point[1]!=2.5 and end_point[1]!=2 and end_point[1]!=2.5):
+                    tag_inf     = [(start_point[0]+end_point[0])/2,y_value_middle,start_point[1]]
+                    print('<text x="{}" y="{}" fill="#000000" font-size="{}" text-anchor="middle" dominant-baseline="central" transform="rotate(0,{},{})" font-weight="bold"  font-family="Consolas, monospace">{}</text>'.format(tag_inf[0],tag_inf[1],8,tag_inf[0],tag_inf[1],tag_inf[2]))
+                elif(start_point[1]!=2 and start_point[1]!=2.5):
+                    tag_inf     = [start_point[0]+20,y_value_middle,start_point[1]]
+                    print('<text x="{}" y="{}" fill="#000000" font-size="{}" text-anchor="middle" dominant-baseline="central" transform="rotate(0,{},{})" font-weight="bold"  font-family="Consolas, monospace">{}</text>'.format(tag_inf[0],tag_inf[1],8,tag_inf[0],tag_inf[1],tag_inf[2]))
+
+
+        else:
+            pass  
+
+#[绘图层MAIN step6]:绘制sig name
+def sig_title_draw():
+    global WAVE_LST
+    for WAVE_DICT in WAVE_LST:  
+        signame = WAVE_DICT['sig_name']
+        y_value_base=WAVE_ORIGIN_STARTY + WAVE_HEIGHT * (1+WAVE_DICT['sig_index'])
+        text_complex=[WAVE_ORIGIN_STARTX-60,y_value_base-50,signame]
+        print('<text x="{}" y="{}" fill="#000000" font-size="{}" text-anchor="middle" dominant-baseline="central" transform="rotate(0,{},{})" font-weight="bold"  font-family="Consolas, monospace">{}</text>'.format(text_complex[0],text_complex[1],18,text_complex[0],text_complex[1],text_complex[2]))
+
+
 #[MISC]：初始波形点插值、相对时间变成绝对时间
 def sigline_to_pointslst(sig_lines,insert_flag=True):#
     #时间累加
@@ -367,8 +412,13 @@ def svg_draw_sig(sig_start_point,sig_end_point,extend_flag,Flag_last,color,line_
             pass
     else:#><=
         # ><
-        svg_draw_line([x_start-6,y_up],[x_start+6,y_down],color,line_width)
-        svg_draw_line([x_start-6,y_down],[x_start+6,y_up],color,line_width)
+        if(x_start-6<WAVE_ORIGIN_STARTX):
+            y_middle = (y_down+y_up)/2
+            svg_draw_line([x_start,y_middle],[x_start+6,y_down],color,line_width)
+            svg_draw_line([x_start,y_middle],[x_start+6,y_up],color,line_width)   
+        else:         
+            svg_draw_line([x_start-6,y_up],[x_start+6,y_down],color,line_width)
+            svg_draw_line([x_start-6,y_down],[x_start+6,y_up],color,line_width)
         if(sig_end_point[0][1]!=2):#short
             if(Flag_last):
                 svg_draw_meshline([x_start+6,y_up],[x_end,y_up],color,line_width)
@@ -592,9 +642,12 @@ cal_real_mesh_draw()
 cal_real_coord_draw()
 cal_real_coord_draw_aixs_x()
 cal_time_note_draw()
+sig_tag_draw()
+sig_title_draw()
 
 for wavedict in WAVE_LST:
     for elem in wavedict.items():
         print(elem)
+        pass
 # point_lst = [(200,280),(300,280),(300,220),(400,220),(400,280),(500,280)]
 # svg_draw_meshline_successive(point_lst,SIG_GREEN,4)
