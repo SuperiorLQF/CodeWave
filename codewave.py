@@ -16,7 +16,7 @@ DIGIT_OPEN              =   True
 #[解析层MAIN]：读取文件存入列表
 def get_lines():
     # 打开文件  
-    with open('wavecode.cdw', 'r') as file:  
+    with open('wavecode.cdw', 'r' ,encoding='UTF-8') as file:  
         # 读取所有行  
         lines = file.readlines()  
     #print(lines)
