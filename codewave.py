@@ -50,14 +50,21 @@ def get_wave(lines):
         if(Flag_in_sig == True):
             if(len(element_lst)!=2):#退出
                 #插入点处理，目前的坐标还是时间坐标，value也还是1和0
-                WAVE_DICT['point_lst_insert']=sigline_to_pointslst(WAVE_DICT['point_lst'])
+                if(WAVE_DICT['sig_manner']=='bin'):
+                    WAVE_DICT['point_lst_insert']=sigline_to_pointslst(WAVE_DICT['point_lst'],True)
+                else:
+                    WAVE_DICT['point_lst_insert']=sigline_to_pointslst(WAVE_DICT['point_lst'],False)
+                    #print(WAVE_DICT['point_lst_insert'])
                 WAVE_LST.append(WAVE_DICT.copy()) 
                 #后处理
                 Flag_in_sig = False
                 WAVE_DICT   = {}
                 sig_index += 1
             else:#中间
-                WAVE_DICT['point_lst'].append([eval(element_lst[0]),eval(element_lst[1])])
+                if(WAVE_DICT['sig_manner']=='bin'):
+                    WAVE_DICT['point_lst'].append([eval(element_lst[0]),eval(element_lst[1])])
+                else:
+                    WAVE_DICT['point_lst'].append([eval(element_lst[0]),element_lst[1]])
                 
         if(len(element_lst) == 4):
             if(element_lst[1] in SIG_MANNER):#进入
@@ -74,19 +81,22 @@ def get_wave(lines):
 def cal_skip_insert():
     global WAVE_LST
     for WAVE_DICT in WAVE_LST:
-        point_lst_real_coord=[]
-        point_lst_real_coord.append(WAVE_DICT['point_lst_insert'][0])#point
-        for point_index in range(0,len(WAVE_DICT['point_lst_insert'])-1):
-            for section in SKIP_LST:
-                skip_start = section[0]
-                skip_end   = section[1]
-                if(skip_start>=WAVE_DICT['point_lst_insert'][point_index][0] and skip_end<=WAVE_DICT['point_lst_insert'][point_index+1][0]):
-                    point_lst_real_coord.append([section[0],2])#section start
-                    point_lst_real_coord.append([section[1],2.5])#section end
+        if(True):
+            point_lst_real_coord=[]
+            point_lst_real_coord.append(WAVE_DICT['point_lst_insert'][0])#point
+            for point_index in range(0,len(WAVE_DICT['point_lst_insert'])-1):
+                for section in SKIP_LST:
+                    skip_start = section[0]
+                    skip_end   = section[1]
+                    if(skip_start>=WAVE_DICT['point_lst_insert'][point_index][0] and skip_end<=WAVE_DICT['point_lst_insert'][point_index+1][0]):
+                        point_lst_real_coord.append([section[0],2])#section start
+                        point_lst_real_coord.append([section[1],2.5])#section end
 
-            point_lst_real_coord.append(WAVE_DICT['point_lst_insert'][point_index+1])#point
+                point_lst_real_coord.append(WAVE_DICT['point_lst_insert'][point_index+1])#point
         
-        WAVE_DICT['point_lst_insert_skip'] = point_lst_real_coord
+            WAVE_DICT['point_lst_insert_skip'] = point_lst_real_coord
+        else:
+            WAVE_DICT['point_lst_insert_skip'] = WAVE_DICT['point_lst_insert']
         
 #[解析层MAIN step2]:在point_lst_insert_skip基础上计算真实坐标，不考虑skip compress和scale
 def cal_real_coord_x():
@@ -131,20 +141,33 @@ def cal_real_coord_x_scale_skipadjust():
 def cal_real_coord_y():
     global WAVE_LST
     for WAVE_DICT in WAVE_LST:
-        real_draw_coord = []
-        y_base_value    = WAVE_ORIGIN_STARTY + WAVE_HEIGHT * (1+WAVE_DICT['sig_index'])
-        point_adjust = 0
-        for point in WAVE_DICT['point_lst_insert_skip_realx_scale_skipadjust']:
-            if(point[1] == 0):
-                point_adjust = y_base_value -30
-            elif(point[1] == 1):
-                point_adjust = y_base_value -70
-            elif(point[1] == 2 or point[1] == 2.5):
-                point_adjust = point_adjust                  
-            else:
-                point_adjust = y_base_value -50
-            real_draw_coord.append([point[0],point_adjust])
-        WAVE_DICT['real_draw_coord'] = real_draw_coord    
+        if(WAVE_DICT['sig_manner']=='bin'):
+            real_draw_coord = []
+            y_base_value    = WAVE_ORIGIN_STARTY + WAVE_HEIGHT * (1+WAVE_DICT['sig_index'])
+            point_adjust = 0
+            for point in WAVE_DICT['point_lst_insert_skip_realx_scale_skipadjust']:
+                if(point[1] == 0):
+                    point_adjust = y_base_value -30
+                elif(point[1] == 1):
+                    point_adjust = y_base_value -70
+                elif(point[1] == 2 or point[1] == 2.5):
+                    point_adjust = point_adjust                  
+                else:
+                    point_adjust = y_base_value -50
+                real_draw_coord.append([point[0],point_adjust])
+            WAVE_DICT['real_draw_coord'] = real_draw_coord    
+        else:
+            real_draw_coord = []
+            y_base_value    = WAVE_ORIGIN_STARTY + WAVE_HEIGHT * (1+WAVE_DICT['sig_index'])
+            point_adjust = 0
+            for point in WAVE_DICT['point_lst_insert_skip_realx_scale_skipadjust']:
+                if(point[1] == 2 or point[1] == 2.5):
+                    point_adjust = point_adjust
+                else:
+                    point_adjust = point[1]
+                real_draw_coord.append([point[0],point[1],point_adjust])
+            WAVE_DICT['real_draw_coord'] = real_draw_coord
+        #print(real_draw_coord)
     pass
 
 #[解析层MAIN step6]:获取real_coord_y的x坐标点集
@@ -186,21 +209,73 @@ def cal_time_note():
         WAVE_DICT['time_note_dict'] = dict(time_note_dict).copy()  
     pass      
 
-#[绘图层MAIN step1]:在real_draw_coord基础上绘制wave
+#[解析层MAIN step8]:获取mesh dot line位置，基于time_note_dict和point_lst_insert
+def cal_real_mesh():
+    global WAVE_LST
+    for WAVE_DICT in WAVE_LST:
+        output_lst=[]
+        point_lst_insert_x=[point[0] for point in WAVE_DICT['point_lst_insert']]
+        for key,value in WAVE_DICT['time_note_dict'].items():
+            if(key in point_lst_insert_x):
+                output_lst.append(value[0])
+        WAVE_DICT['real_mesh_lst_x'] = output_lst
+
+#[绘图层MAIN step1]:绘制虚线，基于real_mesh_x_lst
+def cal_real_mesh_draw():
+    global WAVE_LST
+    for WAVE_DICT in WAVE_LST:
+        dash_end_y   = WAVE_DICT['real_axis_x'][0][-1]
+        dash_start_y = dash_end_y -30
+        for x in WAVE_DICT['real_mesh_lst_x']:
+            if(x!=WAVE_DICT['real_mesh_lst_x'][0] and x!=WAVE_DICT['real_mesh_lst_x'][-1]):
+                dash_start_y_modify = dash_start_y
+            elif(x==WAVE_DICT['real_mesh_lst_x'][0]):
+                dash_start_y_modify =WAVE_DICT['real_draw_coord'][0][1]
+            else:
+                dash_start_y_modify =WAVE_DICT['real_draw_coord'][-1][-1]
+            print('<line x1="{}" y1="{}" x2="{}" y2="{}"  stroke="lightgrey" stroke-width="1" stroke-dasharray="10,5" /> <!-- dot mesh -->'.format(x,dash_start_y_modify,x,dash_end_y))
+    #<line x1="201" y1="200" x2="201" y2="300"  stroke="lightgrey" stroke-width="2" stroke-dasharray="10,5" /> <!-- dot mesh -->
+  
+#[绘图层MAIN step2]:在real_draw_coord基础上绘制wave
 def cal_real_coord_draw():
     global WAVE_LST
     for WAVE_DICT in WAVE_LST:
-        for i in range(len(WAVE_DICT['real_draw_coord'])-1):
-            start_point = WAVE_DICT['real_draw_coord'][i]
-            end_point   = WAVE_DICT['real_draw_coord'][i+1]
-            if(WAVE_DICT['point_lst_insert_skip_realx_scale_skipadjust'][i][1] !=2):
-                svg_draw_meshline(start_point,end_point,WAVE_DICT['sig_color'],WAVE_DICT['sig_linewidth'])
-            if(WAVE_DICT['point_lst_insert_skip_realx_scale_skipadjust'][i][1] == 2 or WAVE_DICT['point_lst_insert_skip_realx_scale_skipadjust'][i][1] == 2.5):
-                svg_draw_line([start_point[0]+6,start_point[1]-10],[start_point[0]-6,start_point[1]+10],WAVE_DICT['sig_color'],WAVE_DICT['sig_linewidth'])
-                pass
-    pass
+        if(WAVE_DICT['sig_manner']=='bin'):
+            for i in range(len(WAVE_DICT['real_draw_coord'])-1):
+                start_point = WAVE_DICT['real_draw_coord'][i]
+                end_point   = WAVE_DICT['real_draw_coord'][i+1]
+                if(WAVE_DICT['point_lst_insert_skip_realx_scale_skipadjust'][i][1] !=2):
+                    svg_draw_meshline(start_point,end_point,WAVE_DICT['sig_color'],WAVE_DICT['sig_linewidth'])
+                if(WAVE_DICT['point_lst_insert_skip_realx_scale_skipadjust'][i][1] == 2 or WAVE_DICT['point_lst_insert_skip_realx_scale_skipadjust'][i][1] == 2.5):
+                    svg_draw_line([start_point[0]+6,start_point[1]-10],[start_point[0]-6,start_point[1]+10],WAVE_DICT['sig_color'],WAVE_DICT['sig_linewidth'])
 
-#[绘图层MAIN step2]:在real_axis_x基础上绘制x轴
+        elif(WAVE_DICT['sig_manner']=='sig'):
+        #[[200, 'MODE1', 'MODE1'], [210, 'MODE2', 'MODE2'], [250, 'MODE3', 'MODE3'], [260, 'MODE4', 'MODE4'], [300, 2, 'MODE4'], [320, 2.5, 'MODE4'], [380, 2, 'MODE4'],
+            for i in range(len(WAVE_DICT['real_draw_coord'])-1):
+                start_point = WAVE_DICT['real_draw_coord'][i]
+                end_point   = WAVE_DICT['real_draw_coord'][i+1]
+                y_value_base= WAVE_ORIGIN_STARTY + WAVE_HEIGHT * (1+WAVE_DICT['sig_index'])
+                y_value_up  = y_value_base -70
+                y_value_down= y_value_base -30
+                y_value_middle=y_value_base -50
+                sig_start_point = [start_point,y_value_up,y_value_down]
+                sig_end_point   = [end_point,y_value_up,y_value_down]
+                #!!!
+                if(end_point==WAVE_DICT['real_draw_coord'][-1]):
+                    Flag_last = True
+                else:
+                    Flag_last = False
+                if(start_point[1]==2.5):#/===
+                    svg_draw_line([start_point[0]+6,y_value_up],[start_point[0]-6,y_value_down],WAVE_DICT['sig_color'],WAVE_DICT['sig_linewidth'],True)
+                    svg_draw_sig(sig_start_point,sig_end_point,False,Flag_last,WAVE_DICT['sig_color'],WAVE_DICT['sig_linewidth'])
+                elif(start_point[1]==2):#/
+                    svg_draw_line([start_point[0]+6,y_value_up],[start_point[0]-6,y_value_down],WAVE_DICT['sig_color'],WAVE_DICT['sig_linewidth'],True)
+                else:#><==
+                    svg_draw_sig(sig_start_point,sig_end_point,True,Flag_last,WAVE_DICT['sig_color'],WAVE_DICT['sig_linewidth'])
+
+
+
+#[绘图层MAIN step3]:在real_axis_x基础上绘制x轴
 def cal_real_coord_draw_aixs_x():
     global WAVE_LST
     for WAVE_DICT in WAVE_LST:
@@ -214,27 +289,31 @@ def cal_real_coord_draw_aixs_x():
                 pass
     pass
 
-#[绘图层MAIN step3]:绘制阶跃点的时间标度，基于time_note_dict
+#[绘图层MAIN step4]:绘制阶跃点的时间标度，基于time_note_dict
 def cal_time_note_draw():
     # <text x="0" y="5" fill="red">这是一段文本</text>
     global WAVE_LST
     for WAVE_DICT in WAVE_LST:
         for time_str,point in WAVE_DICT['time_note_dict'].items():
-            print('<text x="{}" y="{}" fill="#000000" font-size="{}" text-anchor="middle" dominant-baseline="central" transform="rotate(60,{},{})">{}</text>'.format(point[0],point[1],6*SCALE,point[0],point[1],time_str))
+            print('<text x="{}" y="{}" fill="#000000" font-size="{}" text-anchor="middle" dominant-baseline="central" transform="rotate(60,{},{})">{}</text>'.format(point[0],point[1],6,point[0],point[1],time_str))
 
+          
 #[MISC]：初始波形点插值、相对时间变成绝对时间
-def sigline_to_pointslst(sig_lines):#
+def sigline_to_pointslst(sig_lines,insert_flag=True):#
     #时间累加
     for i in range(len(sig_lines)):
         if(i!=0):
             sig_lines[i][0] += sig_lines[i-1][0]
-    inserted_sig_lines=list(range(2*len(sig_lines)))
-    for i in range(len(sig_lines)):
-        inserted_sig_lines[2*i] = sig_lines[i]
-        if(i!=0):#inser
-            inserted_sig_lines[2*i-1] = [inserted_sig_lines[2*i][0],inserted_sig_lines[2*i-2][1]] #时间取后一个的，数值取前一个的        
-    inserted_sig_lines[-1] = [END_TIME,inserted_sig_lines[-2][1]]
-    return inserted_sig_lines
+    if(insert_flag == True):
+        inserted_sig_lines=list(range(2*len(sig_lines)))
+        for i in range(len(sig_lines)):
+            inserted_sig_lines[2*i] = sig_lines[i]
+            if(i!=0):#inser
+                inserted_sig_lines[2*i-1] = [inserted_sig_lines[2*i][0],inserted_sig_lines[2*i-2][1]] #时间取后一个的，数值取前一个的        
+        inserted_sig_lines[-1] = [END_TIME,inserted_sig_lines[-2][1]]
+        return inserted_sig_lines
+    else:
+        return sig_lines+[[END_TIME,sig_lines[-1][1]]]
 
 #获取第i个波形的坐标原点，i从0开始
 def get_axis_start_point(index):
@@ -257,10 +336,53 @@ def cor_convert_skip_lst():#skip_lst坐标变换
     return output_section_lst
 
 
-def svg_draw_line(start_point,end_point,color,line_width):
+def svg_draw_line(start_point,end_point,color,line_width,dash=False):
     x1,y1   =   start_point
     x2,y2   =   end_point
-    print('<line x1="{}" y1="{}" x2="{}" y2="{}" stroke={} stroke-width="{}" /> <!-- SIG -->'.format(x1,y1,x2,y2,color,line_width))
+    if(dash):
+        print('<line x1="{}" y1="{}" x2="{}" y2="{}" stroke={} stroke-width="{}" stroke-dasharray="10,5" /> <!-- dash -->'.format(x1,y1,x2,y2,color,line_width))
+    else:
+        print('<line x1="{}" y1="{}" x2="{}" y2="{}" stroke={} stroke-width="{}" /> <!-- SIG -->'.format(x1,y1,x2,y2,color,line_width))
+
+
+def svg_draw_sig(sig_start_point,sig_end_point,extend_flag,Flag_last,color,line_width):
+    #sig start point [[[320, 2.5, 'MODE4']],y_up,y_down]
+    x_start=sig_start_point[0][0]
+    x_end  =sig_end_point[0][0]
+    y_up=sig_end_point[1]
+    y_down=sig_end_point[2]
+    if(extend_flag == False):#/==
+        if(sig_end_point[0][1]!=2):#short
+            if(Flag_last):
+                svg_draw_meshline([x_start+6,y_up],[x_end,y_up],color,line_width)
+                svg_draw_meshline([x_start-6,y_down],[x_end,y_down],color,line_width)    
+            else:            
+                svg_draw_meshline([x_start+6,y_up],[x_end-6,y_up],color,line_width)
+                svg_draw_meshline([x_start-6,y_down],[x_end-6,y_down],color,line_width)
+            pass
+        else:#long
+            svg_draw_meshline([x_start+6,y_up],[x_end+6,y_up],color,line_width)
+            svg_draw_meshline([x_start-6,y_down],[x_end-6,y_down],color,line_width) 
+        ##!!!draw tag           
+            pass
+    else:#><=
+        # ><
+        svg_draw_line([x_start-6,y_up],[x_start+6,y_down],color,line_width)
+        svg_draw_line([x_start-6,y_down],[x_start+6,y_up],color,line_width)
+        if(sig_end_point[0][1]!=2):#short
+            if(Flag_last):
+                svg_draw_meshline([x_start+6,y_up],[x_end,y_up],color,line_width)
+                svg_draw_meshline([x_start+6,y_down],[x_end,y_down],color,line_width)  
+            else:          
+                svg_draw_meshline([x_start+6,y_up],[x_end-6,y_up],color,line_width)
+                svg_draw_meshline([x_start+6,y_down],[x_end-6,y_down],color,line_width)
+            pass
+        else:#long          
+            svg_draw_meshline([x_start+6,y_up],[x_end+6,y_up],color,line_width)
+            svg_draw_meshline([x_start+6,y_down],[x_end-6,y_down],color,line_width)            
+            pass   
+        ##!!!draw tag     
+        pass
 
 #[绘图层]：根据2点绘制水平或垂直直线
 def svg_draw_meshline(start_point,end_point,color,line_width):
@@ -464,10 +586,13 @@ cal_real_coord_x_scale_skipadjust()
 cal_real_coord_y()
 cal_real_axis_x()
 cal_time_note()
+cal_real_mesh()
 
+cal_real_mesh_draw()
 cal_real_coord_draw()
 cal_real_coord_draw_aixs_x()
 cal_time_note_draw()
+
 for wavedict in WAVE_LST:
     for elem in wavedict.items():
         print(elem)
