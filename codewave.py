@@ -1,5 +1,6 @@
 # parameter
 # param_color
+import sys
 SKIP_LST                =   []
 SCALE                   =   1
 SIG_MANNER              =   ['bin','sig','clk']
@@ -19,7 +20,7 @@ def get_lines():
     with open('wavecode.cdw', 'r' ,encoding='UTF-8') as file:  
         # 读取所有行  
         lines = file.readlines()  
-    #print(lines)
+
     return lines
 
 #[解析层MAIN]：获取参数
@@ -59,9 +60,9 @@ def get_wave(lines):
                 elif(WAVE_DICT['sig_manner']=='clk'):
                     WAVE_DICT['point_lst_insert']=sigline_to_pointslst(WAVE_DICT['point_lst'],2)
                 else:
-                    #print(element_lst)
+
                     WAVE_DICT['point_lst_insert']=sigline_to_pointslst(WAVE_DICT['point_lst'],3)
-                    #print(WAVE_DICT['point_lst_insert'])
+
                 WAVE_LST.append(WAVE_DICT.copy()) 
                 #后处理
                 Flag_in_sig = False
@@ -86,7 +87,7 @@ def get_wave(lines):
                         else:
                             WAVE_DICT['point_lst'].append([neg_point_x,0])
                         pos_point_x = neg_point_x + T*(1-rate)
-                    #print(WAVE_DICT['point_lst'])
+
                 else:
                     pass
                 
@@ -197,7 +198,7 @@ def cal_real_coord_y():
                     point_adjust = point[1]
                 real_draw_coord.append([point[0],point[1],point_adjust])
             WAVE_DICT['real_draw_coord'] = real_draw_coord
-        #print(real_draw_coord)
+
     pass
 
 #[解析层MAIN step6]:获取real_coord_y的x坐标点集
@@ -392,7 +393,7 @@ def sigline_to_pointslst(sig_lines,insert_flag=1):#
         inserted_sig_lines[-1] = [END_TIME,inserted_sig_lines[-2][1]]
         return inserted_sig_lines
     else:
-        #print(sig_lines)
+
         return sig_lines+[[END_TIME,sig_lines[-1][1]]]
 
 #获取第i个波形的坐标原点，i从0开始
@@ -544,7 +545,7 @@ def svg_draw_meshline_successive(point_lst,color,line_width):
     point_lst_forpaint  = point_lst
     skip_num_acc        = 0
     for i in range(line_num):
-        #print(point_lst_forpaint)
+
         #规定skip区间之间不能有用户定义的跳变
         start_point = point_lst[i]
         end_point   = point_lst[i+1]   
@@ -562,7 +563,6 @@ def svg_draw_meshline_successive(point_lst,color,line_width):
                 start_point_p = point_lst_forpaint[i]
                 end_point_p   = point_lst_forpaint[i+1]
                 svg_draw_skip(start_point_p,(section_start_adjust,start_point_p[1]),(section_end_adjust,end_point_p[1]),end_point_p,color,line_width)
-                #print(start_point_p,(section_start_adjust,start_point_p[1]),(section_end_adjust,end_point_p[1]),end_point_p,color,line_width)
                 Flag_in_skip      = True
                 break
 
@@ -608,7 +608,7 @@ def draw_sig(sig_lines,sig_manner,sig_color,sig_linewidth,sig_index):
     points_lst=sigline_to_pointslst(sig_lines_eval,sig_index)
     points_lst=cor_convert(points_lst,sig_index)#坐标变换
     
-    #print(points_lst)
+
     if(sig_manner == "bin"):
         svg_draw_meshline_successive(points_lst,sig_color,eval(sig_linewidth))
     
@@ -628,7 +628,7 @@ def cdw_parse_sig(lines):
     for line in lines:
         element_lst = line.split()
         
-        #print(element_lst)
+
         #寻找全局控制信号
         if(len(element_lst) >= 2):
             #找出ENDTIME
@@ -656,10 +656,35 @@ def cdw_parse_sig(lines):
             if(element_lst[1] in SIG_MANNER):#进入
                 
                 (signame,sig_manner,sig_color,sig_linewidth)=(element_lst[0][1:],element_lst[1],element_lst[2],element_lst[3])
-                #print(signame,sig_manner,sig_color,sig_linewidth)
+
                 Flag_in_sig = True
         
     pass
+def print_HTML_head():
+    print('<!DOCTYPE html>')
+# <!DOCTYPE html>  
+    print('<html>')
+# <html>  
+    print('<head>')
+# <head>  
+    print('\t<title>SVG Example</title>')
+#     <title>SVG Example</title>
+    print('<head>')  
+# </head>  
+    print('<body>')
+# <body>    
+    print('\t<svg width="10000" height="10000" >')
+#     <svg width="10000" height="10000" > 
+def print_HTML_tail():
+    print('\t</svg>')
+    print('</body>')
+    print('</html>')
+
+output_html_file = open("codewave.html", "w")
+sys.stdout = output_html_file
+
+print_HTML_head()
+
 
 lines=get_lines()
 get_args(lines)
@@ -679,6 +704,8 @@ cal_real_coord_draw_aixs_x()
 cal_time_note_draw()
 sig_tag_draw()
 sig_title_draw()
+
+print_HTML_tail()
 
 for wavedict in WAVE_LST:
     for elem in wavedict.items():
