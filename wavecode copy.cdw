@@ -1,0 +1,46 @@
+
+//全局缩放信号
+//建议scale为end-skip的0.2倍，信号变化的最小时间*scale约等于50为合适
+@scale      10
+
+//全局开启数轴上的数字显示,时钟信号强制关闭数轴显示
+@digit      True
+
+//全局省略信号
+@skip       10 to 710
+
+@H_DE       clk #227799     1
+T=1     rate=0.7    offset=0
+
+@V_STATE    sig #227799     2
++0          ACTIVE场有效
++720        FP前沿
++5          SYNC同步
++5          BP后沿
++20         ACTIVE场有效
+
+@V_SYNC     bin #991044     2
++0          0
++720        0
++5          1
++5          0
+
+
+@V_DE       bin #77aa00     2
++0          1
++720        0
++5          0
++5          0
++20         1
+
+//注意，combine类型组合信号出现在成员信号之后
+@DE         combine #aa7722 1
+=           V_DE & H_DE
+
+//注意，取反和信号空一格
+@not_DE     combine #aa7722 1
+=           ~ DE
+
+
+
+@end    755

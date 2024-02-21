@@ -1,9 +1,10 @@
+#new feature:bin和clk类型的逻辑操作
 # parameter
 # param_color
 import sys
 SKIP_LST                =   []
 SCALE                   =   1
-SIG_MANNER              =   ['bin','sig','clk']
+SIG_MANNER              =   ['bin','sig','clk','combine']
 SIG_GREEN               =   "#229933"
 WAVE_HEIGHT             =   100
 WAVE_ORIGIN_STARTX      =   200
@@ -55,12 +56,11 @@ def get_wave(lines):
         if(Flag_in_sig == True):
             if(len(element_lst)<2):#退出
                 #插入点处理，目前的坐标还是时间坐标，value也还是1和0
-                if(WAVE_DICT['sig_manner']=='bin'):
+                if(WAVE_DICT['sig_manner']=='bin'):#累加且插值
                     WAVE_DICT['point_lst_insert']=sigline_to_pointslst(WAVE_DICT['point_lst'],1)
-                elif(WAVE_DICT['sig_manner']=='clk'):
+                elif(WAVE_DICT['sig_manner']=='clk' or WAVE_DICT['sig_manner']=='combine'):#不累加插值
                     WAVE_DICT['point_lst_insert']=sigline_to_pointslst(WAVE_DICT['point_lst'],2)
-                else:
-
+                else:#累加不插值
                     WAVE_DICT['point_lst_insert']=sigline_to_pointslst(WAVE_DICT['point_lst'],3)
 
                 WAVE_LST.append(WAVE_DICT.copy()) 
@@ -78,7 +78,10 @@ def get_wave(lines):
                     rate=eval(element_lst[1][5:])
                     offset=eval(element_lst[2][7:])
                     pos_point_x = offset
-                    WAVE_DICT['point_lst'].append([0,0])
+                    if(offset == 0):
+                        pass
+                    else:
+                        WAVE_DICT['point_lst'].append([0,0])
                     while(pos_point_x<END_TIME):
                         WAVE_DICT['point_lst'].append([pos_point_x,1])
                         neg_point_x= pos_point_x + T*rate
@@ -87,7 +90,17 @@ def get_wave(lines):
                         else:
                             WAVE_DICT['point_lst'].append([neg_point_x,0])
                         pos_point_x = neg_point_x + T*(1-rate)
-
+                    # print("HAHA")
+                    # print(WAVE_DICT['point_lst'])
+                elif(WAVE_DICT['sig_manner']=='combine'):
+                    expression=element_lst[1:]
+                    op1,op2,op=parse_expression(expression)
+                    WAVE_DICT['point_lst']=combine_logic_point_lst(op1,op2,op)[:]
+                    submanner1,submanner2= parse_submanner(op1),parse_submanner(op2)
+                    if(submanner1 =='clk' or submanner2 == 'clk'):
+                        WAVE_DICT['sub_manner'] = 'clk'
+                    else:
+                        WAVE_DICT['sub_manner'] = 'bin'
                 else:
                     pass
                 
@@ -172,7 +185,7 @@ def cal_real_coord_x_scale_skipadjust():
 def cal_real_coord_y():
     global WAVE_LST
     for WAVE_DICT in WAVE_LST:
-        if(WAVE_DICT['sig_manner']=='bin' or WAVE_DICT['sig_manner']=='clk'):
+        if(WAVE_DICT['sig_manner']=='bin' or WAVE_DICT['sig_manner']=='clk' or WAVE_DICT['sig_manner']=='combine'):
             real_draw_coord = []
             y_base_value    = WAVE_ORIGIN_STARTY + WAVE_HEIGHT * (1+WAVE_DICT['sig_index'])
             point_adjust = 0
@@ -249,24 +262,29 @@ def cal_real_mesh():
         for key,value in WAVE_DICT['time_note_dict'].items():
             if(key in point_lst_insert_x):
                 output_lst.append(value[0])
-        WAVE_DICT['real_mesh_lst_x'] = output_lst
+        WAVE_DICT['real_mesh_lst_x'] = output_lst[:]
 
 #[绘图层MAIN step1]:绘制虚线，基于real_mesh_x_lst
 def cal_real_mesh_draw():
     global WAVE_LST
     for WAVE_DICT in WAVE_LST:
-        if(WAVE_DICT['sig_manner']=='bin' or WAVE_DICT['sig_manner']=='clk'):
+        if(WAVE_DICT['sig_manner']=='bin' or (WAVE_DICT['sig_manner']=='combine' and WAVE_DICT['sub_manner']!='clk')):
             dash_end_y   = WAVE_DICT['real_axis_x'][0][-1]
             dash_start_y = dash_end_y -30
             for x in WAVE_DICT['real_mesh_lst_x']:
                 if(x!=WAVE_DICT['real_mesh_lst_x'][0] and x!=WAVE_DICT['real_mesh_lst_x'][-1]):
-                    dash_start_y_modify = dash_start_y
+                    #dash_start_y_modify = dash_start_y
+                    x_index = WAVE_DICT['real_mesh_lst_x'].index(x)
+                    y_point_lst = WAVE_DICT['point_lst'][x_index][1]
+                    dash_start_y_modify = dash_end_y -30 - 40*y_point_lst 
                 elif(x==WAVE_DICT['real_mesh_lst_x'][0]):
                     dash_start_y_modify =WAVE_DICT['real_draw_coord'][0][1]
                 else:
                     dash_start_y_modify =WAVE_DICT['real_draw_coord'][-1][-1]
                 print('<line x1="{}" y1="{}" x2="{}" y2="{}"  stroke="lightgrey" stroke-width="1" stroke-dasharray="10,5" /> <!-- dot mesh -->'.format(x,dash_start_y_modify,x,dash_end_y))
         #<line x1="201" y1="200" x2="201" y2="300"  stroke="lightgrey" stroke-width="2" stroke-dasharray="10,5" /> <!-- dot mesh -->
+        elif(WAVE_DICT['sig_manner']=='clk' or WAVE_DICT['sig_manner']=='combine'):
+            continue
         else:#!!!
             y_value_base= WAVE_ORIGIN_STARTY + WAVE_HEIGHT * (1+WAVE_DICT['sig_index'])
             y_value_up  = y_value_base -70
@@ -287,7 +305,7 @@ def cal_real_mesh_draw():
 def cal_real_coord_draw():
     global WAVE_LST
     for WAVE_DICT in WAVE_LST:
-        if(WAVE_DICT['sig_manner']=='bin' or WAVE_DICT['sig_manner']=='clk'):
+        if(WAVE_DICT['sig_manner']=='bin' or WAVE_DICT['sig_manner']=='clk' or WAVE_DICT['sig_manner']=='combine'):
             for i in range(len(WAVE_DICT['real_draw_coord'])-1):
                 start_point = WAVE_DICT['real_draw_coord'][i]
                 end_point   = WAVE_DICT['real_draw_coord'][i+1]
@@ -340,6 +358,9 @@ def cal_time_note_draw():
     global WAVE_LST
     if(DIGIT_OPEN == True):
         for WAVE_DICT in WAVE_LST:
+            if(WAVE_DICT['sig_manner']=='clk' or (WAVE_DICT['sig_manner']=='combine' and WAVE_DICT['sub_manner']=='clk')):
+                continue
+            #!!!这里可以加入wave的 digital局部控制显示
             for time_str,point in WAVE_DICT['time_note_dict'].items():
                 print('<text x="{}" y="{}" fill="#000000" font-size="{}" text-anchor="middle" dominant-baseline="central" transform="rotate(60,{},{})">{}</text>'.format(point[0],point[1],6,point[0],point[1],time_str))
     else:
@@ -391,10 +412,122 @@ def sigline_to_pointslst(sig_lines,insert_flag=1):#
             if(i!=0):#inser
                 inserted_sig_lines[2*i-1] = [inserted_sig_lines[2*i][0],inserted_sig_lines[2*i-2][1]] #时间取后一个的，数值取前一个的        
         inserted_sig_lines[-1] = [END_TIME,inserted_sig_lines[-2][1]]
-        return inserted_sig_lines
+        if(insert_flag ==1):#开头加0
+            return inserted_sig_lines
+        else:
+            return [[0,0]]+inserted_sig_lines
     else:
-
         return sig_lines+[[END_TIME,sig_lines[-1][1]]]
+
+#[MISC]：逻辑运算,给出sig_name返回sig_manner
+def parse_submanner(sig_name):
+    global WAVE_LST
+    for WAVE_DICT in WAVE_LST:     
+        if(WAVE_DICT['sig_name']==sig_name):
+            if(WAVE_DICT['sig_manner']=='combine'):
+                return WAVE_DICT['sub_manner']
+            else:
+                return WAVE_DICT['sig_manner']
+        
+#[MISC]：逻辑运算,目前仅限2元和1元，多元请拆分
+def combine_logic_point_lst(operator_name1,operator_name2,logic_operand):
+    #使用示例：combine_logic_point_lst('V_SYNC','V_DE','or')
+    global WAVE_LST
+    operator_point_lst1=[]
+    operator_point_lst2=[]
+    for WAVE_DICT in WAVE_LST: 
+        if(WAVE_DICT['sig_name']==operator_name1):
+            if(WAVE_DICT['sig_manner']=='sig'):
+                print('WRONG operator manner')
+            else:
+                operator_point_lst1 = WAVE_DICT['point_lst'][:]
+                #print(WAVE_DICT)
+        elif(WAVE_DICT['sig_name']==operator_name2):
+            if(WAVE_DICT['sig_manner']=='sig'):
+                print('WRONG operator manner')
+            else:
+                operator_point_lst2 = WAVE_DICT['point_lst'][:]
+                #print(WAVE_DICT)
+
+    output_point_lst = []
+    operator_point_lst1_x = [point[0] for point in operator_point_lst1]
+    operator_point_lst1_y = [point[1] for point in operator_point_lst1]
+    operator_point_lst2_x = [point[0] for point in operator_point_lst2]
+    operator_point_lst2_y = [point[1] for point in operator_point_lst2]
+
+    operator_point_lst1_xy= [operator_point_lst1_x,operator_point_lst1_y]
+    operator_point_lst2_xy= [operator_point_lst2_x,operator_point_lst2_y]
+    operator_point_lst12_x= list(set(operator_point_lst1_x) | set(operator_point_lst2_x))#取公共部分
+    operator_point_lst12_x= sorted(operator_point_lst12_x)
+    #insert lst1
+    inserted_lst1=[]
+    i=0
+    last_value=0
+    for x in operator_point_lst12_x:
+        if(x in operator_point_lst1_x):
+            inserted_lst1.append([operator_point_lst1_x[i],operator_point_lst1_y[i]])
+            last_value = operator_point_lst1_y[i]
+            i=i+1
+        else:
+            inserted_lst1.append([x,last_value])
+    
+    #insert lst2
+    inserted_lst2=[]
+    i=0
+    last_value=0
+    for x in operator_point_lst12_x:
+        if(x in operator_point_lst2_x):
+            inserted_lst2.append([operator_point_lst2_x[i],operator_point_lst2_y[i]])
+            last_value = operator_point_lst2_y[i]
+            i=i+1
+        else:
+            inserted_lst2.append([x,last_value]) 
+    
+    #print(inserted_lst1)
+    #print(inserted_lst2)
+    #logic operation
+    output_result_point_lst=[]
+    len_lst1=len(inserted_lst1)
+    len_lst2=len(inserted_lst2)
+    if(len_lst1!=len_lst2):
+        print('ERROR:combine_logic_point_lst error')
+        return
+    else:
+        if(logic_operand == '~' or logic_operand == '!' or logic_operand == 'not'):
+            for i in range(len_lst1):
+                output_result_point_lst.append([inserted_lst1[i][0],1-inserted_lst1[i][1]])
+                pass
+        elif(logic_operand == '&' or logic_operand == 'and'):
+            for i in range(len_lst1):
+                output_result_point_lst.append([inserted_lst1[i][0],inserted_lst1[i][1] and inserted_lst2[i][1]] )
+                pass
+        elif(logic_operand == '|' or logic_operand == 'or'):
+            for i in range(len_lst1):
+                output_result_point_lst.append([inserted_lst1[i][0],inserted_lst1[i][1] or inserted_lst2[i][1]] )
+                pass
+        elif(logic_operand == '^' or logic_operand == 'xor'):
+            for i in range(len_lst1):
+                output_result_point_lst.append([inserted_lst1[i][0],inserted_lst1[i][1] ^ inserted_lst2[i][1]] )
+                pass
+        else:
+            print("ERROR:wrong operand")
+    # print(operator_point_lst1)
+    # print(operator_point_lst2)
+    # print(output_result_point_lst)
+    return output_result_point_lst
+
+#[MISC]：表达式分解
+def parse_expression(expression):
+    #print(expression,type(expression))
+    if(len(expression)==2):
+        op  = expression[0]
+        op1 = expression[1]
+        op2 = expression[1]
+    else:
+        op  = expression[1]
+        op1 = expression[0]
+        op2 = expression[2]
+    return op1,op2,op
 
 #获取第i个波形的坐标原点，i从0开始
 def get_axis_start_point(index):
@@ -680,11 +813,17 @@ def print_HTML_tail():
     print('</body>')
     print('</html>')
 
+
+
+
+oldPrint = sys.stdout   # 用于后期还原
+
+#####################测试时可以注释###############################
 output_html_file = open("codewave.html", "w")
 sys.stdout = output_html_file
+#####################测试时可以注释###############################
 
 print_HTML_head()
-
 
 lines=get_lines()
 get_args(lines)
@@ -707,9 +846,11 @@ sig_title_draw()
 
 print_HTML_tail()
 
+sys.stdout = oldPrint  # 还原输出位置
+
 for wavedict in WAVE_LST:
     for elem in wavedict.items():
-        #print(elem)
+        print(elem)
         pass
 # point_lst = [(200,280),(300,280),(300,220),(400,220),(400,280),(500,280)]
 # svg_draw_meshline_successive(point_lst,SIG_GREEN,4)
