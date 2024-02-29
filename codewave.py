@@ -7,7 +7,7 @@ SCALE                   =   1
 SIG_MANNER              =   ['bin','sig','clk','combine']
 SIG_GREEN               =   "#229933"
 WAVE_HEIGHT             =   100
-WAVE_ORIGIN_STARTX      =   200
+WAVE_ORIGIN_STARTX      =   300
 WAVE_ORIGIN_STARTY      =   200 
 ORIGIN_POINT            =   (WAVE_ORIGIN_STARTX,WAVE_ORIGIN_STARTY)
 END_TIME                =   0
@@ -15,10 +15,13 @@ SKIP_LEN                =   20
 WAVE_LST                =   []
 DIGIT_OPEN              =   True
 
+CDW_FILE_NAME           =   'wavecode.cdw'
+
 #[解析层MAIN]：读取文件存入列表
 def get_lines():
     # 打开文件  
-    with open('wavecode.cdw', 'r' ,encoding='UTF-8') as file:  
+    global CDW_FILE_NAME
+    with open(CDW_FILE_NAME, 'r' ,encoding='UTF-8') as file:  
         # 读取所有行  
         lines = file.readlines()  
 
@@ -362,7 +365,7 @@ def cal_time_note_draw():
                 continue
             #!!!这里可以加入wave的 digital局部控制显示
             for time_str,point in WAVE_DICT['time_note_dict'].items():
-                print('<text x="{}" y="{}" fill="#000000" font-size="{}" text-anchor="middle" dominant-baseline="central" transform="rotate(60,{},{})">{}</text>'.format(point[0],point[1],6,point[0],point[1],time_str))
+                print('<text x="{}" y="{}" fill="#000000" font-size="{}" text-anchor="middle" dominant-baseline="central" transform="rotate(60,{},{})">{}</text>'.format(point[0],point[1],8,point[0],point[1],time_str))
     else:
         pass
     
@@ -379,10 +382,10 @@ def sig_tag_draw():
                 end_point   = real_draw_coord[i+1]
                 if(start_point[1]!=2 and start_point[1]!=2.5 and end_point[1]!=2 and end_point[1]!=2.5):
                     tag_inf     = [(start_point[0]+end_point[0])/2,y_value_middle,start_point[1]]
-                    print('<text x="{}" y="{}" fill="#000000" font-size="{}" text-anchor="middle" dominant-baseline="central" transform="rotate(0,{},{})" font-weight="bold"  font-family="Consolas, monospace">{}</text>'.format(tag_inf[0],tag_inf[1],8,tag_inf[0],tag_inf[1],tag_inf[2]))
+                    print('<text x="{}" y="{}" fill="#000000" font-size="{}" text-anchor="middle" dominant-baseline="central" transform="rotate(0,{},{})" font-weight="bold"  font-family="Consolas, monospace">{}</text>'.format(tag_inf[0],tag_inf[1],13,tag_inf[0],tag_inf[1],tag_inf[2]))
                 elif(start_point[1]!=2 and start_point[1]!=2.5):
                     tag_inf     = [start_point[0]+10+SKIP_LEN,y_value_middle,start_point[1]]
-                    print('<text x="{}" y="{}" fill="#000000" font-size="{}" text-anchor="middle" dominant-baseline="central" transform="rotate(0,{},{})" font-weight="bold"  font-family="Consolas, monospace">{}</text>'.format(tag_inf[0],tag_inf[1],8,tag_inf[0],tag_inf[1],tag_inf[2]))
+                    print('<text x="{}" y="{}" fill="#000000" font-size="{}" text-anchor="middle" dominant-baseline="central" transform="rotate(0,{},{})" font-weight="bold"  font-family="Consolas, monospace">{}</text>'.format(tag_inf[0],tag_inf[1],13,tag_inf[0],tag_inf[1],tag_inf[2]))
 
 
         else:
@@ -394,8 +397,8 @@ def sig_title_draw():
     for WAVE_DICT in WAVE_LST:  
         signame = WAVE_DICT['sig_name']
         y_value_base=WAVE_ORIGIN_STARTY + WAVE_HEIGHT * (1+WAVE_DICT['sig_index'])
-        text_complex=[WAVE_ORIGIN_STARTX-60,y_value_base-50,signame]
-        print('<text x="{}" y="{}" fill="#000000" font-size="{}" text-anchor="middle" dominant-baseline="central" transform="rotate(0,{},{})" font-weight="bold"  font-family="Consolas, monospace">{}</text>'.format(text_complex[0],text_complex[1],18,text_complex[0],text_complex[1],text_complex[2]))
+        text_complex=[WAVE_ORIGIN_STARTX-10,y_value_base-50,signame]
+        print('<text x="{}" y="{}" fill="#000000" font-size="{}" text-anchor="end" dominant-baseline="central" transform="rotate(0,{},{})" font-weight="bold"  font-family="Consolas, monospace">{}</text>'.format(text_complex[0],text_complex[1],18,text_complex[0],text_complex[1],text_complex[2]))
 
 
 #[MISC]：初始波形点插值、相对时间变成绝对时间
@@ -554,9 +557,9 @@ def svg_draw_line(start_point,end_point,color,line_width,dash=False):
     x1,y1   =   start_point
     x2,y2   =   end_point
     if(dash):
-        print('<line x1="{}" y1="{}" x2="{}" y2="{}" stroke={} stroke-width="{}" stroke-dasharray="10,5" /> <!-- dash -->'.format(x1,y1,x2,y2,color,line_width))
+        print('<line x1="{}" y1="{}" x2="{}" y2="{}" stroke="{}" stroke-width="{}" stroke-dasharray="10,5" /> <!-- dash -->'.format(x1,y1,x2,y2,color,line_width))
     else:
-        print('<line x1="{}" y1="{}" x2="{}" y2="{}" stroke={} stroke-width="{}" /> <!-- SIG -->'.format(x1,y1,x2,y2,color,line_width))
+        print('<line x1="{}" y1="{}" x2="{}" y2="{}" stroke="{}" stroke-width="{}" /> <!-- SIG -->'.format(x1,y1,x2,y2,color,line_width))
 
 
 def svg_draw_sig(sig_start_point,sig_end_point,extend_flag,Flag_last,color,line_width):
@@ -640,7 +643,7 @@ def svg_draw_meshline(start_point,end_point,color,line_width):
             x1 = x1 + (line_width/2)
             x2 = x2 - (line_width/2)                 
 
-    print('<line x1="{}" y1="{}" x2="{}" y2="{}" stroke={} stroke-width="{}" /> <!-- SIG -->'.format(x1,y1,x2,y2,color,line_width))
+    print('<line x1="{}" y1="{}" x2="{}" y2="{}" stroke="{}" stroke-width="{}" /> <!-- SIG -->'.format(x1,y1,x2,y2,color,line_width))
 
 #[绘图层] [skip] :绘制skip左右短线
 def svg_draw_skipline(section_start,section_end,color,line_width):
@@ -817,7 +820,7 @@ def print_HTML_tail():
 
 
 oldPrint = sys.stdout   # 用于后期还原
-
+CDW_FILE_NAME = sys.argv[1]
 #####################测试时可以注释###############################
 output_html_file = open("codewave.html", "w")
 sys.stdout = output_html_file

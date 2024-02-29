@@ -1,0 +1,7 @@
+使用方法：参考 wavecode_example.cdw ,用户只需要写一个 <yourfilename>.cdw 文件，然后运行即可
+>> python3 codewave.py <yourfilename>.cdw
+然后用浏览器打开 codewave.html 即可
+
+req:sig信号可以自定义字段颜色，sig信号自定义字段字体大小
+例如 +0 sig_tag color font_size
+

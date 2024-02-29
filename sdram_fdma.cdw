@@ -1,0 +1,44 @@
+
+//全局缩放信号
+//为获取最佳显示，建议scale*(end-skip)=1000，信号变化的最小时间*scale > 50
+@scale      40
+
+//全局开启数轴上的数字显示,时钟信号强制关闭数轴显示
+@digit      True
+
+//全局省略信号
+@skip       19  to  30
+
+@fdma_clk       clk #3366aa     2
+T=1     rate=0.5    offset=0
+
+@fdma_wreq      bin #009911     2
++0          0
++5          1
++5         0
+
+@fdma_waddr&wsize sig #009911   2
++0          无效
++5          burst_start_addr/burst_size
++5          无效
+
+@fdma_wbusy     bin #990011     2
++0          1
++3          0
++6          1
++25         0
+
+@fdma_wvalid    bin #990011     2
++0          0
++15         1
++16         0
+
+@fdma_wdata     sig #009911     2
++0          无效
++16         data1
++1          data2
++1          data3
++13         data_last
++1          无效
+
+@end    35
