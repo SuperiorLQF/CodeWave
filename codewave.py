@@ -384,8 +384,8 @@ def sig_tag_draw():
                     tag_inf     = [(start_point[0]+end_point[0])/2,y_value_middle,start_point[1]]
                     print('<text x="{}" y="{}" fill="#000000" font-size="{}" text-anchor="middle" dominant-baseline="central" transform="rotate(0,{},{})" font-weight="bold"  font-family="Consolas, monospace">{}</text>'.format(tag_inf[0],tag_inf[1],13,tag_inf[0],tag_inf[1],tag_inf[2]))
                 elif(start_point[1]!=2 and start_point[1]!=2.5):
-                    tag_inf     = [start_point[0]+10+SKIP_LEN,y_value_middle,start_point[1]]
-                    print('<text x="{}" y="{}" fill="#000000" font-size="{}" text-anchor="middle" dominant-baseline="central" transform="rotate(0,{},{})" font-weight="bold"  font-family="Consolas, monospace">{}</text>'.format(tag_inf[0],tag_inf[1],13,tag_inf[0],tag_inf[1],tag_inf[2]))
+                    tag_inf     = [start_point[0]+SKIP_LEN,y_value_middle,start_point[1]] #[start_point[0]+SCALE,y_value_middle,start_point[1]]
+                    print('<text x="{}" y="{}" fill="#000000" font-size="{}" text-anchor="start" dominant-baseline="central" transform="rotate(0,{},{})" font-weight="bold"  font-family="Consolas, monospace">{}</text>'.format(tag_inf[0],tag_inf[1],13,tag_inf[0],tag_inf[1],tag_inf[2]))
 
 
         else:
